@@ -1,0 +1,49 @@
+import json
+import os
+import pickle
+from typing import List, Tuple, Dict
+from sklearn.model_selection import train_test_split
+
+ids_to_remove: List[int] = []
+
+def get_raw_data(raw_data_dir: str, data_name: str, cal_ratio: float
+                 ) -> Tuple[List[dict], List[dict]]:
+    path = os.path.join(raw_data_dir, f"{data_name}.json")
+    raw_data = json.load(open(path, "r"))
+    raw_data = [d for idx, d in enumerate(raw_data) if idx not in ids_to_remove]
+    
+    return train_test_split(raw_data, train_size=cal_ratio, random_state=42)
+
+
+def load_all_data(raw_data_dir: str, data_name: str):
+    path = os.path.join(raw_data_dir, f"{data_name}.json")
+    return json.load(open(path, "r"))
+
+
+def get_logits_data(model_name: str,
+                    data_name: str,
+                    cal_raw_data,
+                    test_raw_data,
+                    logits_data_dir: str,
+                    cal_ratio: float,
+                    prompt_methods,
+                    icl_methods) -> Dict[str, Dict[str, list]]:
+    logits_all = {}
+    for m in prompt_methods:
+        for fs in icl_methods:
+            #fname = f"{model_name}_{data_name}_{m}_{fs}.pkl"
+            fname = f"{model_name}_{data_name}_{m}.pkl"
+            path = os.path.join(logits_data_dir, fname)
+            with open(path, "rb") as fp:
+                logits = pickle.load(fp)
+            logits = [item for i, item in enumerate(logits) if i not in ids_to_remove]
+            cal_logits, test_logits = train_test_split(
+                logits, train_size=cal_ratio, random_state=42
+            )
+            logits_all[f"{m}_{fs}"] = {"cal": cal_logits, "test": test_logits}
+    return logits_all
+
+
+def convert_id_to_ans(raw_data):
+    return {str(row["id"]): row["answer"] for row in raw_data}
+
