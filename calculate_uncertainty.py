@@ -2,7 +2,7 @@ import argparse
 from pprint import pprint
 import json
 
-from quantify_uncertanty.eval import evaluate
+from quantify_uncertainty.eval import evaluate
 
 
 def parse_args():
@@ -15,7 +15,9 @@ def parse_args():
     p.add_argument("--icl_methods", nargs="+", default=["icl0"])
     p.add_argument("--cal_ratio", type=float, default=0.5)
     p.add_argument("--alpha", type=float, default=0.1)
-    p.add_argument("--out_json", default=None, help="Optional path to dump results as JSON")
+    p.add_argument(
+        "--out_json", default=None, help="Optional path to dump results as JSON"
+    )
     return p.parse_args()
 
 
@@ -33,4 +35,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

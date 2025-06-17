@@ -4,29 +4,38 @@ import os
 import pickle
 from tqdm import tqdm
 
-from quantify_uncertanty.logit_generator import load_model, batched_logits
-from quantify_uncertanty.prompts import PROMPT_DISPATCH, few_shot_exp_ids
+from quantify_uncertainty.logit_generator import load_model, batched_logits
+from quantify_uncertainty.prompts import PROMPT_DISPATCH, few_shot_exp_ids
 
 
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--model", required=True)
-    p.add_argument("--dataset_file", required=True,
-                   help="Path to the raw *.json dataset file")
+    p.add_argument(
+        "--dataset_file", required=True, help="Path to the raw *.json dataset file"
+    )
     p.add_argument("--out_dir", required=True)
-    p.add_argument("--prompt_methods", nargs="+",
-                   default=["base"], choices=["base", "shared", "task"])
-    p.add_argument("--few_shot", type=int, default=0,
-                   help="0 = zero-shot; >0 uses demo IDs from few_shot_exp_ids")
-    p.add_argument("--cot", action="store_true",
-                   help="add chain-of-thought template variant")
+    p.add_argument(
+        "--prompt_methods",
+        nargs="+",
+        default=["base"],
+        choices=["base", "shared", "task"],
+    )
+    p.add_argument(
+        "--few_shot",
+        type=int,
+        default=0,
+        help="0 = zero-shot; >0 uses demo IDs from few_shot_exp_ids",
+    )
+    p.add_argument(
+        "--cot", action="store_true", help="add chain-of-thought template variant"
+    )
     return p.parse_args()
-
 
 
 def main():
     args = parse_args()
-    
+
     with open(args.dataset_file, "r") as fp:
         raw_data = json.load(fp)
 
@@ -54,4 +63,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
