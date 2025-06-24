@@ -1,6 +1,68 @@
 import json
 from collections import Counter
 
+import numpy as np
+
+import json, os
+from quantify_uncertainty.utils import load_and_split_jsonl
+
+from quantify_uncertainty.metrics.cp_metrics import compute
+
+
+def evaluate_outputs_with_conformal(
+    jsonl_path,
+    out_json,
+    prompt_method="base",
+    icl_method="icl0",
+    cal_ratio=0.5,
+    alpha=0.1,
+):
+    cal_raw, test_raw = load_and_split_jsonl(jsonl_path, cal_ratio)
+
+    logits_data_all = {
+        f"{prompt_method}_{icl_method}": {
+            "cal": build_logits_rows(cal_raw),
+            "test": build_logits_rows(test_raw),
+        }
+    }
+
+    metrics = compute(
+        logits_data_all,
+        cal_raw,
+        test_raw,
+        prompt_methods=[prompt_method],
+        icl_methods=[icl_method],
+        alpha=alpha,
+    )
+
+    out = {
+        "model": cal_raw[0].get("meta", {}).get("model", "unknown"),
+        "num_examples": len(cal_raw) + len(test_raw),
+        "metrics": metrics,
+    }
+
+    os.makedirs(os.path.dirname(out_json), exist_ok=True)
+    with open(out_json, "w") as f:
+        json.dump(out, f, indent=2)
+
+    print("Metrics saved →", out_json)
+
+
+def build_logits_rows(examples):
+    """Convert each JSONL row → dict expected by LAC/APS code."""
+    rows = []
+    for row in examples:
+        rows.append(
+            {
+                "id": row["id"],
+                "logprobs_options": np.array(
+                    [row["logprobs"][k] for k in row["choices"]]
+                ),
+                "choices": row["choices"],
+            }
+        )
+    return rows
+
 
 def evaluate_outputs(output_jsonl_path: str, output_metrics_path: str):
     data = []
@@ -33,7 +95,7 @@ def evaluate_outputs(output_jsonl_path: str, output_metrics_path: str):
         },
     }
 
-    with open(output_metrics_path, "w") as f:
+    with open(output_metrics_path, "a") as f:
         json.dump(metrics, f, indent=2)
 
     print(f"Saved metrics to {output_metrics_path}")

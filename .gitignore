@@ -1,2 +1,4 @@
 *outputs/
 *__pycache__/
+.env
+*env/

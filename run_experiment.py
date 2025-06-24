@@ -28,6 +28,7 @@ def run_experiment(
     few_shot: int = 0,
     cot: bool = False,
     output_path: str = "experiment_outputs.jsonl",
+    failures_path: str = "experiment_failures_record.jsonl",
     api_key: str = None,
 ):
     # Load raw data
@@ -52,31 +53,44 @@ def run_experiment(
         raise ValueError(f"Unsupported backend: {backend}")
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, "w") as fout:
+    with open(output_path, "a") as fout, open(failures_path, "a") as ferr:
         for ex in tqdm(raw_data, desc=f"{model_name} | {prompt_method}"):
             formatted = format_fn(
                 ex, argparse.Namespace(few_shot=few_shot, cot=cot), fewshot
             )
             prompt = formatted["prompt"]
-            print(f"prompt here is {prompt}")
+            # print(f"prompt here is {prompt}")
             choices = list(ex["choices"].keys())
 
+            meta = {"model": model_name}
             result = {
                 "id": ex["id"],
                 "source": ex["source"],
                 "prompt": prompt,
                 "choices": choices,
-                "ground_truth": ex["answer"],
+                "answer": ex["answer"],
+                "meta": meta,
             }
+            try:
+                # Run model
+                model_response = model.generate(prompt, choices)
+                # model_response = {
+                #     "output": "A",
+                #     "raw_logprobs": {
+                #         "A": -0.033782511949539185,
+                #         "B": -3.533782482147217,
+                #         "C": -9.533782958984375,
+                #         "D": -5.533782482147217,
+                #         "E": -15.283782958984375,
+                #     },
+                # }
+                result["output"] = model_response["output"]
+                result["logprobs"] = model_response["raw_logprobs"]
 
-            # Run model
-            result["output"] = model.generate(prompt)
-
-            # Try to get logits if backend supports it
-            logits = model.get_logits(prompt, choices)
-            if logits is not None:
-                result["logits_options"] = logits.tolist()
-
-            fout.write(json.dumps(result) + "\n")
+                fout.write(json.dumps(result) + "\n")
+            except Exception as e:
+                print(f"⚠️ Error on ID {ex['id']}: {e}")
+                fail_record = {**result, "error": str(e)}
+                ferr.write(json.dumps(fail_record) + "\n")
 
     print(f"Saved outputs to: {output_path}")

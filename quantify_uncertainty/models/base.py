@@ -4,7 +4,7 @@ from typing import List, Optional
 
 class BaseModel(ABC):
     @abstractmethod
-    def generate(self, prompt: str) -> str:
+    def generate(self, prompt: str, choices: List[int]) -> str:
         pass
 
     @abstractmethod
