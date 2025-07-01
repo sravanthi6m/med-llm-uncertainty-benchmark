@@ -13,18 +13,17 @@ from quantify_uncertainty.metrics_runner import (
 
 load_dotenv(dotenv_path="env/.env")
 api_key = os.getenv("OPENAI_API_KEY")
-model_name = "gpt-4o-mini"
+model_name = "gpt-4.1-mini"
 backend = "openai"
 
-dataset_path = "/Users/sushritayerra/Downloads/sample_test.json"
+dataset_path = "/Users/sushritayerra/Downloads/amboss_alldiff_train_randabst.json"
 prompt_method = "shared"
 few_shot = 0
 cot = False
+version = "v1"
 
 out_dir = "outputs"
-run_name = (
-    f"{model_name}_medqa_{prompt_method}_fs{few_shot}_cot{cot}_test_logprobs_3".lower()
-)
+run_name = f"{model_name}_amboss_randabst_{prompt_method}_fs{few_shot}_cot{cot}_{version}".lower()
 output_path = f"{out_dir}/{run_name}.jsonl"
 failures_path = f"{out_dir}/{run_name}_failures.jsonl"
 metrics_path = f"{out_dir}/{run_name}_metrics.json"
