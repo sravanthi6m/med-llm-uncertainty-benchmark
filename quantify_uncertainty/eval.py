@@ -2,7 +2,7 @@ import pkgutil
 import importlib
 
 from .data_helpers.loaders import (get_raw_data, get_logits_data)
-import quantify_uncertanty.metrics as _metrics_pkg
+import quantify_uncertainty.metrics as _metrics_pkg
 
 def _discover_metric_modules():
     for info in pkgutil.iter_modules(_metrics_pkg.__path__):
