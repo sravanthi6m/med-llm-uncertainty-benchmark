@@ -30,6 +30,7 @@ def run_experiment(
     output_path: str = "experiment_outputs.jsonl",
     failures_path: str = "experiment_failures_record.jsonl",
     api_key: str = None,
+    dataset_type: str = None
 ):
     # Load raw data
     raw_data = load_all_data(
@@ -62,7 +63,12 @@ def run_experiment(
             # print(f"prompt here is {prompt}")
             choices = list(ex["choices"].keys())
 
-            meta = {"model": model_name}
+            meta = {
+                "model": model_name,
+                "few_shot": few_shot,
+                "cot": cot,
+                "dataset_type": dataset_type
+            }
             result = {
                 "id": ex["id"],
                 "source": ex["source"],

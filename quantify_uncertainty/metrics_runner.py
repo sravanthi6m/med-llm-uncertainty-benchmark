@@ -36,16 +36,16 @@ def evaluate_outputs_with_conformal(
     )
 
     out = {
-        "model": cal_raw[0].get("meta", {}).get("model", "unknown"),
+        "meta": cal_raw[0].get("meta", {}),
         "num_examples": len(cal_raw) + len(test_raw),
         "metrics": metrics,
     }
+    save_metrics_append(out, out_json)
+    # os.makedirs(os.path.dirname(out_json), exist_ok=True)
+    # with open(out_json, "w") as f:
+    #     json.dump(out, f, indent=2)
 
-    os.makedirs(os.path.dirname(out_json), exist_ok=True)
-    with open(out_json, "w") as f:
-        json.dump(out, f, indent=2)
-
-    print("Metrics saved →", out_json)
+    # print("Metrics saved →", out_json)
 
 
 def build_logits_rows(examples):
@@ -99,3 +99,23 @@ def evaluate_outputs(output_jsonl_path: str, output_metrics_path: str):
         json.dump(metrics, f, indent=2)
 
     print(f"Saved metrics to {output_metrics_path}")
+
+def save_metrics_append(out: dict, out_json: str):
+    os.makedirs(os.path.dirname(out_json), exist_ok=True)
+
+    # Load existing if it exists
+    if os.path.exists(out_json):
+        with open(out_json, "r") as f:
+            existing = json.load(f)
+        if not isinstance(existing, list):
+            raise ValueError("Expected a list of metrics in the output JSON file.")
+    else:
+        existing = []
+
+    existing.append(out)
+
+    # Save updated list
+    with open(out_json, "w") as f:
+        json.dump(existing, f, indent=2)
+
+    print("Metrics appended →", out_json)
