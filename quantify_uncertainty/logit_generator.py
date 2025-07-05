@@ -5,44 +5,100 @@ from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
     LlamaForCausalLM,
-    GenerationConfig
+    GenerationConfig,
+    BitsAndBytesConfig
 )
 from tqdm import tqdm
 
 def load_model(model_name: str):
+    quantization_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.bfloat16
+        )
+    
     if "Qwen" in model_name or "internlm" in model_name:
-        tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+        tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, padding_side='left')
     elif "SUS" in model_name or "Yi-34B-Chat" in model_name:
-        tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
+        tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False, padding_side='left')
     else:
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, padding_side='left')
 
     tokenizer.truncation_side = "left"
     tokenizer.model_max_length = min(tokenizer.model_max_length, 2048)
 
     if "falcon" in model_name or "deepseek" in model_name:
         model = AutoModelForCausalLM.from_pretrained(
-            model_name, torch_dtype=torch.bfloat16, device_map="auto")
+            model_name,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+            attn_implementation="sdpa"
+            )
         if "deepseek" in model_name:
             model.generation_config = GenerationConfig.from_pretrained(model_name)
             model.generation_config.pad_token_id = model.generation_config.eos_token_id
     elif "Llama" in model_name:
         model = LlamaForCausalLM.from_pretrained(
-            model_name, torch_dtype=torch.float16, device_map="auto")
+            model_name,
+            torch_dtype=torch.float16,
+            device_map="auto",
+            trust_remote_code=True,
+            attn_implementation="sdpa",
+            quantization_config=quantization_config
+        )
     elif any(k in model_name for k in ("Mistral", "mpt", "Mixtral")):
-        model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto")
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            device_map="auto",
+            attn_implementation="sdpa"
+        )
     elif any(k in model_name for k in ("Yi", "SUS")):
         model = AutoModelForCausalLM.from_pretrained(
-            model_name, device_map="auto", torch_dtype="auto")
+            model_name, 
+            device_map="auto", 
+            torch_dtype="auto",
+            attn_implementation="sdpa"
+        )
+    elif any(k in model_name.lower() for k in ("gemma", "medgemma")):
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+            attn_implementation="sdpa"
+        )
+    elif "phi" in model_name.lower():
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            device_map="auto",
+            torch_dtype="auto",
+            trust_remote_code=True,
+            attn_implementation="sdpa"
+        )
     elif "Qwen" in model_name:
         model = AutoModelForCausalLM.from_pretrained(
-            model_name, device_map="auto", torch_dtype=torch.float16, trust_remote_code=True)
+            model_name,
+            device_map="auto",
+            torch_dtype=torch.float16,
+            trust_remote_code=True,
+            attn_implementation="sdpa",
+            quantization_config=quantization_config
+        )
     elif "internlm" in model_name:
         model = AutoModelForCausalLM.from_pretrained(
-            model_name, device_map="auto", torch_dtype=torch.float16, trust_remote_code=True)
+            model_name,
+            device_map="auto",
+            torch_dtype=torch.float16,
+            trust_remote_code=True,
+            attn_implementation="sdpa"
+        )
     elif "COKAL" in model_name:
         model = AutoModelForCausalLM.from_pretrained(
-            model_name, device_map="auto", torch_dtype=torch.float16, return_dict=True)
+            model_name,
+            device_map="auto",
+            torch_dtype=torch.float16,
+            return_dict=True,
+            attn_implementation="sdpa"
+        )
     else:
         raise NotImplementedError(f"Model type {model_name} not supported.")
     model.eval()
