@@ -17,7 +17,7 @@ def _format_example(example, prompt, with_answer=False):
     Retruns str
     """
     src = example["source"]
-    if src in ("MMLU", "MEDQA_1", "MEDQA_3", "AMBOSS"):
+    if (src in ("MMLU", "MEDQA_1", "MEDQA_3")) or ("AMBOSS" in src):
         prompt += "Question: " + example["question"] + "\nChoices:\n"
     elif src == "CosmosQA":
         prompt += f"Context: {example['context']}\nQuestion: {example['question']}\nChoices:\n"
@@ -56,10 +56,13 @@ def _shared(example, args, fewshot=None):
         prompt = pt.shared_few_prompt
         for ex in fewshot:
             prompt = _format_example(ex, prompt, with_answer=True)
-        prompt += ("\nNow make your best effort and select the correct answer "
-                   "for the following question. You only need to output the option.\n\n")
+        prompt += (
+            "\nNow make your best effort and select the correct answer "
+            "for the following question. You only need to output the option.\n\n"
+        )
     if args.cot:
         prompt = pt.shared_cot_prompt
+    prompt = prompt.format(num_choices=len(example["choices"]))
     prompt = _format_example(example, prompt)
     return {"id": example["id"], "choices": example["choices"], "prompt": prompt}
 
@@ -72,8 +75,10 @@ def _task(example, args, fewshot=None):
         prompt = pt_dict[example["source"]]
         for ex in fewshot:
             prompt = _format_example(ex, prompt, with_answer=True)
-        prompt += ("\nNow make your best effort and select the correct answer "
-                   "for the following question. You only need to output the option.\n\n")
+        prompt += (
+            "\nNow make your best effort and select the correct answer "
+            "for the following question. You only need to output the option.\n\n"
+        )
 
     if args.cot:
         pt_dict = json.loads(pt.task_cot_prompt, strict=False)
