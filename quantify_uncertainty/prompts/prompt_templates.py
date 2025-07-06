@@ -1,4 +1,8 @@
-shared_zero_prompt = '''The following is a multiple-choice question with six potential answers. Only one of these options is correct. Please make your best effort and select the correct answer. You only need to output the option.\n\n'''
+shared_zero_prompt = (
+    "The following is a multiple-choice question with {num_choices} potential answers. " 
+    "Only one of these options is correct. Please make your best effort and select the correct answer. "
+    "You only need to output the option.\n\n"
+)
 
 task_zero_prompt = '''
 {"MMLU": "The following is a multiple-choice question about question answering. You should answer the question based on your world knowledge and problem solving ability. You only need to output the option.\n\n", 

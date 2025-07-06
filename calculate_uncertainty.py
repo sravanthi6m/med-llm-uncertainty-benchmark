@@ -2,7 +2,7 @@ import argparse
 from pprint import pprint
 import json
 
-from quantify_uncertanty.eval import evaluate
+from quantify_uncertainty.eval import evaluate
 
 
 def parse_args():
