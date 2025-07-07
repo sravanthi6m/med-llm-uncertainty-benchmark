@@ -36,7 +36,11 @@ def evaluate_outputs_with_conformal(
     )
 
     out = {
-        "meta": cal_raw[0].get("meta", {}),
+        "meta": {
+            **cal_raw[0].get("meta", {}),
+            "cal_ratio": cal_ratio,
+            "alpha": alpha,
+        },
         "num_examples": len(cal_raw) + len(test_raw),
         "metrics": metrics,
     }
@@ -99,6 +103,7 @@ def evaluate_outputs(output_jsonl_path: str, output_metrics_path: str):
         json.dump(metrics, f, indent=2)
 
     print(f"Saved metrics to {output_metrics_path}")
+
 
 def save_metrics_append(out: dict, out_json: str):
     os.makedirs(os.path.dirname(out_json), exist_ok=True)

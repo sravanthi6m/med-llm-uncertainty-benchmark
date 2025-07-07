@@ -14,37 +14,57 @@ from quantify_uncertainty.metrics_runner import evaluate_outputs_with_conformal
 
 def detect_backend(model_name: str) -> str:
     """Determine backend type from model name."""
-    return "openai" if "gpt" in model_name.lower() or "openai" in model_name.lower() else "open"
+    return (
+        "openai"
+        if "gpt" in model_name.lower() or "openai" in model_name.lower()
+        else "open"
+    )
+
 
 def build_output_path(dataset_name, cot, model_name) -> str:
-    print(f"dataset_name is {dataset_name} and cot is {cot} and model_name is {model_name}")
+    print(
+        f"dataset_name is {dataset_name} and cot is {cot} and model_name is {model_name}"
+    )
 
     setting = ""
     if cot:
         setting = "fewshot"
     else:
         setting = "zeroshot"
-    
-    out_dir = os.path.join("outputs", dataset_name, setting, model_name.replace("/", "_"))
+
+    out_dir = os.path.join(
+        "outputs", dataset_name, setting, model_name.replace("/", "_")
+    )
     metrics_dir = os.path.join("outputs", dataset_name, setting)
-    print(f"newly constructred out put dir is: {out_dir} and metrics_dir: {metrics_dir}")
+    print(
+        f"newly constructred out put dir is: {out_dir} and metrics_dir: {metrics_dir}"
+    )
     return metrics_dir, out_dir
+
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", type=str, required=True, help="Model name")
-    parser.add_argument("--dataset", type=str, required=True, help="Path to dataset (.json)")
-    parser.add_argument("--prompt", type=str, default="shared", help="Prompt method: shared/base/task")
+    parser.add_argument("--model", type=str, required=True, help="Model")
+    parser.add_argument("--model_name", type=str, required=True, help="Model Name")
+    parser.add_argument(
+        "--dataset", type=str, required=True, help="Path to dataset (.json)"
+    )
+    parser.add_argument(
+        "--prompt", type=str, default="shared", help="Prompt method: shared/base/task"
+    )
     parser.add_argument("--few_shot", type=int, default=0)
     parser.add_argument("--cot", type=int, default=0)
     parser.add_argument("--cal_ratio", type=float, default=0.3)
     parser.add_argument("--alpha", type=float, default=0.1)
     parser.add_argument("--version", type=str, default="v1")
     parser.add_argument("--model_key", type=str, default="OPENAI_API_KEY")
-    parser.add_argument("--dataset_type", type=str, default="NoAbst") #NoAbst, Abst, Pert
+    parser.add_argument(
+        "--dataset_type", type=str, default="NoAbst"
+    )  # NoAbst, Abst, Pert
     args = parser.parse_args()
 
     model_path = args.model
+    model_name = args.model_name
     dataset_path = args.dataset
     prompt_method = args.prompt
     few_shot = args.few_shot
@@ -60,7 +80,6 @@ def main():
 
     backend = detect_backend(model_path)
     dataset_name = os.path.splitext(os.path.basename(dataset_path))[0]
-    model_name = os.path.splitext(os.path.basename(model_path))[0]
 
     run_name = f"{model_name}_{dataset_name}_{dataset_type}_{prompt_method}_fs{few_shot}_cot{cot}_{version}".lower()
     print(f"run_name is {run_name}")
@@ -78,7 +97,7 @@ def main():
     print(f"output_path: {output_path}")
     print(f"failures_path: {failures_path}")
     print(f"metrics_path: {metrics_path}")
-    
+
     # Run inference
     print(f"Running experiment!")
     run_experiment(
@@ -91,7 +110,7 @@ def main():
         output_path=output_path,
         failures_path=failures_path,
         api_key=api_key,
-        dataset_type=dataset_type
+        dataset_type=dataset_type,
     )
 
     # Run evaluation
@@ -104,6 +123,7 @@ def main():
         cal_ratio=cal_ratio,
         alpha=alpha,
     )
+
 
 if __name__ == "__main__":
     main()
