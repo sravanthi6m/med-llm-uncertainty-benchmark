@@ -33,7 +33,7 @@ class OpenAIModel:
                     temperature=0.0,
                 )
                 output = response.choices[0].message.content.strip()
-                print(f"returning: {output}")
+                # print(f"returning: {output}")
                 return output
 
             except (RateLimitError, OpenAIError, APITimeoutError) as e:

@@ -60,7 +60,7 @@ def main():
     parser.add_argument("--model_key", type=str, default="OPENAI_API_KEY")
     parser.add_argument(
         "--dataset_type", type=str, default="NoAbst"
-    )  # NoAbst, Abst, Pert
+    )  # NoAbst, Abst, PertRandAbst
     args = parser.parse_args()
 
     model_path = args.model
