@@ -36,17 +36,15 @@ def load_model(model_name: str):
         )
         model_kwargs["quantization_config"] = quantization_config
         
-        if 'llama-33-70b' in model_name.lower(): # specific max_memory config required for for Llama3.3-70B
-            model_kwargs["max_memory"] = {
-                0: "38GiB",
-                1: "38GiB",
-                2: "38GiB",
-                3: "38GiB",
-                4: "38GiB",
-                "cpu": "0GiB" 
-            }
-        else:
-            model_kwargs["device_map"] = "auto"
+        model_kwargs["max_memory"] = {
+            0: "38GiB",
+            1: "38GiB",
+            2: "38GiB",
+            3: "38GiB",
+            4: "38GiB",
+            "cpu": "0GiB" 
+        }
+    
     else:
         model_kwargs["device_map"] = "auto"
 
