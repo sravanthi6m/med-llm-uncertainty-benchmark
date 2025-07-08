@@ -17,9 +17,20 @@ def evaluate(cfg):
 
     for dsets in cfg.data_names:
         cal_raw, test_raw = get_raw_data(cfg.raw_data_dir, dsets, cfg.cal_ratio)
-        logits_all = get_logits_data(cfg.model, dsets, cal_raw, test_raw,
-                                     cfg.logits_data_dir, cfg.cal_ratio,
-                                     cfg.prompt_methods, cfg.icl_methods)
+        
+        logits_all = get_logits_data(
+            model_name=cfg.model, 
+            data_name=dsets, 
+            cal_raw_data=cal_raw, 
+            test_raw_data=test_raw,
+            logits_data_dir=cfg.logits_data_dir, 
+            cal_ratio=cfg.cal_ratio,
+            prompt_methods=cfg.prompt_methods, 
+            icl_methods=cfg.icl_methods,
+            k_few_shot=cfg.k_few_shot,
+            dynamic_few_shot=cfg.dynamic_few_shot,
+            cot=cfg.cot
+        )
 
         per_dataset = {}
         for mod in metric_mods:

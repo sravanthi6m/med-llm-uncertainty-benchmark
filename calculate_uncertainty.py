@@ -15,6 +15,9 @@ def parse_args():
     p.add_argument("--icl_methods", nargs="+", default=["icl0"])
     p.add_argument("--cal_ratio", type=float, default=0.5)
     p.add_argument("--alpha", type=float, default=0.1)
+    p.add_argument("--dynamic_few_shot", action="store_true", help="Flag if dynamic few-shot was used.")
+    p.add_argument("--k_few_shot", type=int, default=0, help="Number of few-shot examples (k) used.")
+    p.add_argument("--cot", action="store_true", help="Flag if chain-of-thought was used.")
     p.add_argument("--out_json", default=None, help="Optional path to dump results as JSON")
     return p.parse_args()
 
