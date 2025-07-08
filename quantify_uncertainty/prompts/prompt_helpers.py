@@ -41,7 +41,7 @@ def _format_example(example, prompt, with_answer=False):
 
 def _base(example, args, fewshot=None):
     prompt = ""
-    if args.few_shot and fewshot:
+    if ( (args.dynamic_few_shot and args.k_few_shot > 0) or args.few_shot) and fewshot:
         for ex in fewshot:
             prompt = _format_example(ex, prompt, with_answer=True)
     if args.cot:
@@ -52,7 +52,7 @@ def _base(example, args, fewshot=None):
 
 def _shared(example, args, fewshot=None):
     prompt = pt.shared_zero_prompt
-    if args.few_shot and fewshot:
+    if ( (args.dynamic_few_shot and args.k_few_shot > 0) or args.few_shot) and fewshot:
         prompt = pt.shared_few_prompt
         for ex in fewshot:
             prompt = _format_example(ex, prompt, with_answer=True)
@@ -70,7 +70,7 @@ def _shared(example, args, fewshot=None):
 def _task(example, args, fewshot=None):
     pt_dict = json.loads(pt.task_zero_prompt, strict=False)
     prompt = pt_dict[example["source"]]
-    if args.few_shot and fewshot:
+    if ( (args.dynamic_few_shot and args.k_few_shot > 0) or args.few_shot) and fewshot:
         pt_dict = json.loads(pt.task_few_prompt, strict=False)
         prompt = pt_dict[example["source"]]
         for ex in fewshot:
