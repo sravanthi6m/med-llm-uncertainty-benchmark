@@ -19,10 +19,15 @@ def _get_abstention_option(choices):
 
 def _get_accuracy(logits_data_all, test_raw, pm, icl):
     acc, e_ratio, f_ratio, abstention_rate = {}, {}, {}, {}
+    abstention_rate_by_difficulty = {}
+
     for m in pm:
         for fs in icl:
             key = f"{m}_{fs}"
             res, preds, abst = [], [], []
+            difficulty_abst_counts = {}
+            difficulty_total_counts = {}
+
             for logit_row, raw_row in zip(logits_data_all[key]["test"], test_raw):
                 print(f"logit_row is {logit_row}")
                 opts = logit_row.get("option_keys_for_logits") or list(
@@ -37,12 +42,37 @@ def _get_accuracy(logits_data_all, test_raw, pm, icl):
 
                 if abstention_option and abstention_option == pred:
                     abst.append(logit_row["id"])
+                
+                source = raw_row.get('source', '')
+                if source and 'AMBOSS_d' in source:
+                    match = re.search(r'd(\d)', source)
+                    if match:
+                        difficulty_level = f"d{match.group(1)}"
+                        # Initialize counters if not present
+                        difficulty_total_counts.setdefault(difficulty_level, 0)
+                        difficulty_abst_counts.setdefault(difficulty_level, 0)
+                        
+                        # Increment total count for this difficulty
+                        difficulty_total_counts[difficulty_level] += 1
+                        
+                        # Increment abstention count if the model abstained
+                        if abstention_option and abstention_option == pred:
+                            difficulty_abst_counts[difficulty_level] += 1
+            
             acc[key] = np.mean(res)
             cts = Counter(preds)
             e_ratio[key] = cts.get("E", 0) / len(preds) if preds else 0
             f_ratio[key] = cts.get("F", 0) / len(preds) if preds else 0
             abstention_rate[key] = len(abst) / len(preds) if abst else 0
-    return acc, e_ratio, f_ratio, abstention_rate
+
+            temp_abst_rate_by_diff = {}
+            for diff, total in difficulty_total_counts.items():
+                abst_count = difficulty_abst_counts.get(diff, 0)
+                temp_abst_rate_by_diff[diff] = abst_count / total if total > 0 else 0
+            
+            abstention_rate_by_difficulty[key] = temp_abst_rate_by_diff
+
+    return acc, e_ratio, f_ratio, abstention_rate, abstention_rate_by_difficulty
 
 
 def _coverage(pred_sets_all, id2ans, pm, icl):
@@ -105,7 +135,7 @@ def _uacc(acc_dict, set_size_dict, avg_k):
 
 def compute(logits_data_all, cal_raw, test_raw, prompt_methods, icl_methods, alpha=0.1):
     id2ans = convert_id_to_ans(test_raw)
-    acc, e_rat, f_rat, abst_score = _get_accuracy(
+    acc, e_rat, f_rat, abst_rate_overall, abst_rate_by_diff = _get_accuracy(
         logits_data_all, test_raw, prompt_methods, icl_methods
     )
 
@@ -134,7 +164,7 @@ def compute(logits_data_all, cal_raw, test_raw, prompt_methods, icl_methods, alp
         "Acc": acc,
         "E_rate": e_rat,
         "F_rate": f_rat,
-        "abstention_rate": abst_score,
+        "abstention_rate": abst_rate_overall,
         "LAC_set_size": sz_lac,
         "APS_set_size": sz_aps,
         "LAC_coverage": cov_lac,
@@ -142,5 +172,6 @@ def compute(logits_data_all, cal_raw, test_raw, prompt_methods, icl_methods, alp
         "UAcc_LAC": uacc_lac,
         "UAcc_APS": uacc_aps,
         "LAC_set_size_by_difficulty": sz_lac_by_diff,
-        "APS_set_size_by_difficulty": sz_aps_by_diff
+        "APS_set_size_by_difficulty": sz_aps_by_diff,
+        "abstention_rate_by_difficulty": abst_rate_by_diff
     }
