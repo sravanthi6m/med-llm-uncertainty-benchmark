@@ -1,7 +1,8 @@
-import pyarrow as pa
+import re
 import json
 import string
 import random
+import pyarrow as pa
 import pandas as pd
 
 from collections import Counter
