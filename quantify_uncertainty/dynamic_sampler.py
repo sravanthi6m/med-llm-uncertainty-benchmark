@@ -1,7 +1,9 @@
 import os
 import json
-import numpy as np
 import faiss
+import random
+import numpy as np
+
 from tqdm import tqdm
 from abc import ABC, abstractmethod
 
@@ -70,26 +72,23 @@ class DynamicSampler:
     Handles logic for finding semantically similar few-shot examples
     Generates and caches embeddings for datasets to avoid re-computation
     """
-    def __init__(self, few_shot_pool_path, data_file_path, embedding_model_name='all-MiniLM-L6-v2', api_key=None):
-        self.few_shot_pool_path = few_shot_pool_path
-        self.data_file_path = data_file_path
-        
-        if "text-embedding" in embedding_model_name:
-            self.embedding_model = OpenAIEmbeddingModel(
-                model_name=embedding_model_name, 
-                api_key=api_key
-            )
-        else:
-            self.embedding_model = SentenceTransformerModel(model_name=embedding_model_name)
-        
-        print("Loading and embedding training data...")
-        self.few_shot_data, self.few_shot_embeddings = self._load_and_embed(self.few_shot_pool_path)
-        
+    def __init__(self, data_file_path, few_shot_pool_path_1, embedding_model: EmbeddingModel, few_shot_pool_path_2=None):
+        self.embedding_model = embedding_model
+                
         print("Loading and embedding test data...")
-        self.dataset, self.data_embeddings = self._load_and_embed(self.data_file_path)
+        self.dataset, self.data_embeddings = self._load_and_embed(data_file_path)
 
-        print("Building FAISS index...")
-        self.index = self._build_faiss_index(self.few_shot_embeddings)
+        print("Loading and embedding few-shot pool 1...")
+        self.pool1_data, self.pool1_embeddings = self._load_and_embed(few_shot_pool_path_1)
+        self.pool1_index = self._build_faiss_index(self.pool1_embeddings)
+
+        self.pool2_data = None
+        self.pool2_embeddings = None
+        self.pool2_index = None
+        if few_shot_pool_path_2 and os.path.exists(few_shot_pool_path_2):
+            print("Loading and embedding few-shot pool 2...")
+            self.pool2_data, self.pool2_embeddings = self._load_and_embed(few_shot_pool_path_2)
+            self.pool2_index = self._build_faiss_index(self.pool2_embeddings)
 
     def _get_cache_path(self, file_path):
         """
@@ -129,25 +128,48 @@ class DynamicSampler:
         index.add(embeddings.astype('float32'))
         return index
 
-    def get_dynamic_few_shot_examples(self, k):
+    def get_dynamic_few_shot_examples(self, k, pool_1_percentage=1.0):
         """
         Find top k similar questions from the few-shot pool for each question
         """
-        print(f"Finding top {k} similar examples for each test question...")
-        data_embeddings_f32 = self.data_embeddings.astype('float32')
-        distances, indices = self.index.search(data_embeddings_f32, k + 1)
+        k1 = int(round(k * pool_1_percentage))
+        k2 = k - k1
+        
+        print(f"Finding top {k} examples per test question ({k1} from pool 1, {k2} from pool 2)...")
         
         few_shot_map = {}
         for i in tqdm(range(len(self.dataset)), desc="Mapping few-shot examples"):
-            data_item_id = self.dataset[i]['id']
-            neighbor_indices = indices[i]
+            test_item = self.dataset[i]
+            test_embedding = self.data_embeddings[i]
             
-            few_shot_examples = []
-            for idx in neighbor_indices:
-                if len(few_shot_examples) < k:
-                    if self.few_shot_data[idx]['id'] != data_item_id:
-                        few_shot_examples.append(self.few_shot_data[idx])
+            num_to_search = k + 20  # Oversampling to deal with duplicate ids
+
+            p1_candidates = []
+            if k1 > 0 and self.pool1_index:
+                p1_dists, p1_indices = self.pool1_index.search(np.array([test_embedding]).astype('float32'), num_to_search)
+                p1_candidates = [(p1_dists[0][j], self.pool1_data[p1_indices[0][j]], 'pool1') for j in range(len(p1_dists[0]))]
+
+            p2_candidates = []
+            if k2 > 0 and self.pool2_index:
+                p2_dists, p2_indices = self.pool2_index.search(np.array([test_embedding]).astype('float32'), num_to_search)
+                p2_candidates = [(p2_dists[0][j], self.pool2_data[p2_indices[0][j]], 'pool2') for j in range(len(p2_dists[0]))]
             
-            few_shot_map[data_item_id] = few_shot_examples
+            best_candidates = {}
+            for dist, example, pool_name in p1_candidates + p2_candidates:
+                example_id = example['id']
+                if example_id not in best_candidates or dist < best_candidates[example_id][0]:
+                    best_candidates[example_id] = (dist, example, pool_name)
+            
+            best_from_pool1 = sorted([ex for _, ex, pool in best_candidates.values() if pool == 'pool1'], key=lambda x: x['id'])
+            best_from_pool2 = sorted([ex for _, ex, pool in best_candidates.values() if pool == 'pool2'], key=lambda x: x['id'])
+
+            # Take the top k1 and k2 from de-dup sorted lists
+            final_pool1_examples = best_from_pool1[:k1]
+            final_pool2_examples = best_from_pool2[:k2]
+
+            combined_examples = final_pool1_examples + final_pool2_examples
+            random.shuffle(combined_examples)
+            
+            few_shot_map[test_item['id']] = combined_examples
             
         return few_shot_map

@@ -6,8 +6,8 @@ import numpy as np
 from tqdm import tqdm
 
 from quantify_uncertainty.logit_generator import load_model, batched_logits
-from quantify_uncertainty.prompts import PROMPT_DISPATCH, few_shot_exp_ids
-from quantify_uncertainty.dynamic_sampler import DynamicSampler
+from quantify_uncertainty.prompts import PROMPT_DISPATCH
+from quantify_uncertainty.dynamic_sampler import DynamicSampler, SentenceTransformerModel, OpenAIEmbeddingModel
 
 def parse_args():
     p = argparse.ArgumentParser()
@@ -19,16 +19,19 @@ def parse_args():
                    help="Path to the output *.json file with model answers")
     p.add_argument("--prompt_methods", nargs="+",
                    default=["base"], choices=["base", "shared", "task"])
-    p.add_argument("--few_shot", type=int, default=0,
-                   help="0 = zero-shot; >0 uses demo IDs from few_shot_exp_ids")
     p.add_argument("--cot", action="store_true",
                    help="add chain-of-thought template variant")
-    p.add_argument("--dynamic_few_shot", action="store_true",
-                   help="Enable dynamic few-shot example selection.")
+
     p.add_argument("--k_few_shot", type=int, default=0,
                    help="Number of few-shot examples (k). Set to > 0 to enable few-shot.")
-    p.add_argument("--few_shot_pool", type=str, default=None,
-                   help="Path to the corresponding data file for dynamic sampling.")
+    p.add_argument("--few_shot_pool_1", type=str, default=None,
+                   help="Path to the corresponding (primary) data file for dynamic sampling.")
+    p.add_argument("--few_shot_pool_2", type=str, default=None,
+                   help="Path to the second (optional) data file for dynamic sampling.")
+    p.add_argument("--pool_1_percentage", type=float, default=1.0,
+                   help="Percentage of k to sample from the first pool (0.0 to 1.0), remaining will be from second pool.")
+    p.add_argument("--embedding_model", type=str, default="all-MiniLM-L6-v2", 
+                   help="Name of the embedding model to use (e.g., 'all-MiniLM-L6-v2' or 'text-embedding-ada-002') to determine k-NN few-shot examples.")
     
     return p.parse_args()
 
@@ -39,24 +42,28 @@ def main():
     with open(args.dataset_file, "r") as fp:
         raw_data = json.load(fp)
 
-    few_shot_map = None
-    if args.dynamic_few_shot and args.k_few_shot > 0:
+    dynamic_fewshot_map = None
+    if args.k_few_shot > 0:
         print("Generating dynamic samples")
 
-        if not args.few_shot_pool or not os.path.exists(args.few_shot_pool):
-            raise FileNotFoundError(f"Dynamic few-shot requires a valid path to json file at --few_shot_pool. Path not found: {args.few_shot_pool}")
+        if not args.few_shot_pool_1 or not os.path.exists(args.few_shot_pool_1):
+            raise FileNotFoundError(f"Dynamic few-shot requires a valid path to json file at --few_shot_pool_1. Path not found: {args.few_shot_pool_1}")
+        
+        if "text-embedding" in args.embedding_model:
+            embedding_model_instance = OpenAIEmbeddingModel(model_name=args.embedding_model)
+        else:
+            embedding_model_instance = SentenceTransformerModel(model_name=args.embedding_model)
         
         sampler = DynamicSampler(
-            few_shot_pool_path=args.few_shot_pool,
             data_file_path=args.dataset_file,
-            embedding_model_name='text-embedding-ada-002'
+            few_shot_pool_path_1=args.few_shot_pool_1,
+            few_shot_pool_path_2=args.few_shot_pool_2,
+            embedding_model=embedding_model_instance
         )
-        few_shot_map = sampler.get_dynamic_few_shot_examples(k=args.k_few_shot)
-    
-    if args.few_shot > 0:
-        src = raw_data[0]["source"]
-        demo_ids = few_shot_exp_ids.get(src, [])[: args.few_shot]
-        few_shot_map = [ex for ex in raw_data if ex["id"] in demo_ids]
+        dynamic_fewshot_map = sampler.get_dynamic_few_shot_examples(
+            k=args.k_few_shot, 
+            pool_1_percentage=args.pool_1_percentage
+        )
 
     tok, model = load_model(args.model)
 
@@ -67,9 +74,7 @@ def main():
         
         prompts_for_batching = []
         for ex in tqdm(raw_data, desc=f"Formatting prompts for {pm} k={args.k_few_shot} cot={args.cot}"):
-            current_fewshot_examples = None
-            if few_shot_map:
-                current_fewshot_examples = few_shot_map.get(ex['id'], [])
+            current_fewshot_examples = dynamic_fewshot_map.get(ex['id'], []) if dynamic_fewshot_map else None
             
             prompt_dict = fmt_fn(ex, args, fewshot=current_fewshot_examples)
             base_prompt_string = prompt_dict.get("prompt", "")
@@ -90,8 +95,8 @@ def main():
             
             prompts_for_batching.append(prompt_dict)
 
-            print(" ---------------- PROMPTS FOR BATCHING DYNAMIC FEW SHOT ------------- ") ####
-            print(prompts_for_batching) ####
+            #print(" ---------------- PROMPTS FOR BATCHING DYNAMIC FEW SHOT ------------- ") ####
+            #print(prompts_for_batching) ####
 
         logits_rows = batched_logits(model, tok, prompts_for_batching)
 
@@ -119,9 +124,8 @@ def main():
         # ${BASENAME}_${PROMPT_METHOD}_${FEW_SHOT_TAG}_${DYNAMIC_TAG}_${COT_TAG}
         cot_tag = "cot" if args.cot else "nocot"
         few_shot_tag = f"k{args.k_few_shot}" if args.k_few_shot > 0 else "k0"
-        dynamic_tag = "dynamic" if args.dynamic_few_shot else "static"
         model_basename = os.path.basename(args.model.strip('/'))
-        fn = f"{model_basename}_{os.path.basename(args.dataset_file)[:-5]}_{pm}_{few_shot_tag}_{dynamic_tag}_{cot_tag}.pkl"
+        fn = f"{model_basename}_{os.path.basename(args.dataset_file)[:-5]}_{pm}_{few_shot_tag}_{cot_tag}.pkl"
 
         with open(os.path.join(args.out_dir, fn), "wb") as fp:
             pickle.dump(logits_rows, fp)
