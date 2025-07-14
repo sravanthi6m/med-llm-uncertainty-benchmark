@@ -1,3 +1,4 @@
+import re
 import numpy as np
 from collections import Counter
 
@@ -62,6 +63,38 @@ def _set_size(pred_sets_all, pm, icl):
     return sz
 
 
+def _set_size_by_difficulty(pred_sets_all, test_raw, pm, icl):
+    """
+    Only for AMBOSS - average set size for each difficulty level
+    """
+    id_to_source = {str(item['id']): item.get('source', '') for item in test_raw}
+    
+    m = pm[0]
+    fs = icl[0]
+    key = f"{m}_{fs}"
+
+    difficulty_groups = {}
+    
+    if key not in pred_sets_all:
+        return {}
+
+    for item_id_str, pred_set in pred_sets_all[key].items():
+        source = id_to_source.get(item_id_str)
+        if source and 'AMBOSS_d' in source:
+            match = re.search(r'd(\d)', source)
+            if match:
+                difficulty_level = f"d{match.group(1)}"
+                if difficulty_level not in difficulty_groups:
+                    difficulty_groups[difficulty_level] = []
+                difficulty_groups[difficulty_level].append(len(pred_set))
+    
+    avg_sz_by_diff = {
+        diff: np.mean(sizes) for diff, sizes in difficulty_groups.items()
+    }
+            
+    return avg_sz_by_diff
+
+
 def _uacc(acc_dict, set_size_dict, avg_k):
     return {
         k: acc_dict[k] * np.sqrt(avg_k) / set_size_dict[k]
@@ -87,6 +120,13 @@ def compute(logits_data_all, cal_raw, test_raw, prompt_methods, icl_methods, alp
     sz_lac = _set_size(ps_lac, prompt_methods, icl_methods)
     sz_aps = _set_size(ps_aps, prompt_methods, icl_methods)
 
+    sz_lac_by_diff = {}
+    sz_aps_by_diff = {}
+    if test_raw and 'AMBOSS' in test_raw[0].get('source', ''):
+        print("AMBOSS dataset detected, calculating set size by difficulty...")
+        sz_lac_by_diff = _set_size_by_difficulty(ps_lac, test_raw, prompt_methods, icl_methods)
+        sz_aps_by_diff = _set_size_by_difficulty(ps_aps, test_raw, prompt_methods, icl_methods)
+
     uacc_lac = _uacc(acc, sz_lac, avg_choices)
     uacc_aps = _uacc(acc, sz_aps, avg_choices)
 
@@ -101,4 +141,6 @@ def compute(logits_data_all, cal_raw, test_raw, prompt_methods, icl_methods, alp
         "APS_coverage": cov_aps,
         "UAcc_LAC": uacc_lac,
         "UAcc_APS": uacc_aps,
+        "LAC_set_size_by_difficulty": sz_lac_by_diff,
+        "APS_set_size_by_difficulty": sz_aps_by_diff
     }
