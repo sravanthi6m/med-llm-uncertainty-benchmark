@@ -26,13 +26,17 @@ def get_logits_data(model_name: str,
                     test_raw_data,
                     logits_data_dir: str,
                     cal_ratio: float,
-                    prompt_methods,
-                    icl_methods) -> Dict[str, Dict[str, list]]:
+                    prompt_methods: List[str],
+                    icl_methods: List[str],
+                    k_few_shot: int,
+                    cot: bool) -> Dict[str, Dict[str, list]]:
     logits_all = {}
     for m in prompt_methods:
         for fs in icl_methods:
-            #fname = f"{model_name}_{data_name}_{m}_{fs}.pkl"
-            fname = f"{model_name}_{data_name}_{m}.pkl"
+            cot_tag = "cot" if cot else "nocot"
+            few_shot_tag = f"k{k_few_shot}" if k_few_shot > 0 else "k0"
+            
+            fname = f"{model_name}_{data_name}_{m}_{few_shot_tag}_{cot_tag}.pkl"
             path = os.path.join(logits_data_dir, fname)
             with open(path, "rb") as fp:
                 logits = pickle.load(fp)

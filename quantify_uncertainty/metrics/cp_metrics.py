@@ -29,7 +29,7 @@ def _get_accuracy(logits_data_all, test_raw, pm, icl):
             difficulty_total_counts = {}
 
             for logit_row, raw_row in zip(logits_data_all[key]["test"], test_raw):
-                print(f"logit_row is {logit_row}")
+                #print(f"logit_row is {logit_row}")
                 opts = logit_row.get("option_keys_for_logits") or list(
                     raw_row["choices"].keys()
                 )

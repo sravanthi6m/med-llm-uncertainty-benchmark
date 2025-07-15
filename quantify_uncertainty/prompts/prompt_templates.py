@@ -13,7 +13,7 @@ task_zero_prompt = '''
 }
 '''
 
-shared_few_prompt = '''Below are some examples of multiple-choice questions with six potential answers. For each question, only one option is correct.\n\n'''
+shared_few_prompt = '''Below are some examples of multiple-choice questions along with their associated options, which are potential answers. For each question, only one option is correct.\n\n'''
 
 task_few_prompt = '''
 {"MMLU": "Below are some examples of multiple-choice questions about question answering. Each question should be answered based on your world knowledge and problem solving ability.\n\n", 
