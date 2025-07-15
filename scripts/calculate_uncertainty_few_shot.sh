@@ -71,16 +71,16 @@ CAL_RATIO=0.3
 ALPHA=0.1
 
 declare -A DATASET_PAIRS
-DATASET_PAIRS["medqa_1_test_noabst.json"]="few_shot_pool_medqa_1_train_noabst.json"
-DATASET_PAIRS["medqa_1_test_randabst.json"]="few_shot_pool_medqa_1_train_noabst.json"
+#DATASET_PAIRS["medqa_1_test_noabst.json"]="few_shot_pool_medqa_1_train_noabst.json"
+#DATASET_PAIRS["medqa_1_test_randabst.json"]="few_shot_pool_medqa_1_train_noabst.json"
 # DATASET_PAIRS["perturbed_medqa_1_test_noabst.json"]="few_shot_pool_medqa_1_train_noabst.json"
 # DATASET_PAIRS["perturbed_medqa_1_test_noabst.json"]="few_shot_pool_medqa_1_train_noabst.json"
-DATASET_PAIRS["amboss_alldiff_train_noabst.json"]="few_shot_pool_amboss_train_test_alldiff.json"
-DATASET_PAIRS["amboss_alldiff_train_randabst.json"]="few_shot_pool_amboss_train_test_alldiff.json"
+#DATASET_PAIRS["amboss_alldiff_train_noabst.json"]="few_shot_pool_amboss_train_test_alldiff.json"
+#DATASET_PAIRS["amboss_alldiff_train_randabst.json"]="few_shot_pool_amboss_train_test_alldiff.json"
 # DATASET_PAIRS["perturbed_amboss_alldiff_train_noabst.json"]="few_shot_pool_amboss_train_test_alldiff.json"
 # DATASET_PAIRS["perturbed_amboss_alldiff_train_randabst.json"]="few_shot_pool_amboss_train_test_alldiff.json"
-# DATASET_PAIRS["testing_data_medqa.json"]="few_shot_pool_medqa_1_train_noabst.json"
-# DATASET_PAIRS["testing_data_amboss.json"]="few_shot_pool_amboss_train_test_alldiff.json"
+DATASET_PAIRS["testing_data_medqa.json"]="few_shot_pool_medqa_1_train_noabst.json"
+DATASET_PAIRS["testing_data_amboss.json"]="few_shot_pool_amboss_train_test_alldiff.json"
 
 echo "Running pipeline for ${#MODEL_NAMES[@]} model(s) x ${#DATA_FILES[@]} data file(s) (${K_FEW_SHOT}-shot)..."
 echo "    Output dir: ${OUTPUT_DIR}"
@@ -120,10 +120,9 @@ for MODEL_NAME in "${MODEL_NAMES[@]}"; do
             fi
             
             FEW_SHOT_TAG="k${K_FEW_SHOT}"
-            DYNAMIC_TAG="dynamic" # no static few-shot for now
 
-            JSON_WITH_ANSWERS="${OUTPUT_DIR}/${BASENAME}_${MODEL_NAME}_${PROMPT_METHOD}_${FEW_SHOT_TAG}_${DYNAMIC_TAG}_${COT_TAG}_with_answers.json"
-            RESULTS_JSON="${OUTPUT_DIR}/${BASENAME}_${MODEL_NAME}_${PROMPT_METHOD}_${FEW_SHOT_TAG}_${DYNAMIC_TAG}_${COT_TAG}_results.json"
+            JSON_WITH_ANSWERS="${OUTPUT_DIR}/${BASENAME}_${MODEL_NAME}_${PROMPT_METHOD}_${FEW_SHOT_TAG}_${COT_TAG}_with_answers.json"
+            RESULTS_JSON="${OUTPUT_DIR}/${BASENAME}_${MODEL_NAME}_${PROMPT_METHOD}_${FEW_SHOT_TAG}_${COT_TAG}_results.json"
 
             echo "----------"
             echo "RUNNING: ${FILE} with CoT: ${COT_MODE}"
@@ -135,9 +134,8 @@ for MODEL_NAME in "${MODEL_NAMES[@]}"; do
                 "--prompt_methods" "${PROMPT_METHOD}"
                 "--out_dir=${OUTPUT_DIR}"
                 "--output_json=${JSON_WITH_ANSWERS}"
-                "--dynamic_few_shot"
                 "--k_few_shot=${K_FEW_SHOT}"
-                "--few_shot_pool=${RAW_FS_FILE}"
+                "--few_shot_pool_1=${RAW_FS_FILE}"
             )
             
             # Conditionally add the --cot flag
@@ -155,7 +153,6 @@ for MODEL_NAME in "${MODEL_NAMES[@]}"; do
                 "--icl_methods" "icl0"
                 "--cal_ratio=${CAL_RATIO}"
                 "--alpha=${ALPHA}"
-                "--dynamic_few_shot"
                 "--k_few_shot=${K_FEW_SHOT}"
                 "--out_json=${RESULTS_JSON}"
             )
