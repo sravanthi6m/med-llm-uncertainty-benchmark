@@ -41,7 +41,7 @@ def _format_example(example, prompt, with_answer=False):
 
 def _base(example, args, fewshot=None):
     prompt = ""
-    if ( (args.dynamic_few_shot and args.k_few_shot > 0) or args.few_shot) and fewshot:
+    if (args.k_few_shot > 0) and fewshot:
         for ex in fewshot:
             prompt = _format_example(ex, prompt, with_answer=True)
     if args.cot:
@@ -52,14 +52,11 @@ def _base(example, args, fewshot=None):
 
 def _shared(example, args, fewshot=None):
     prompt = pt.shared_zero_prompt
-    if ( (args.dynamic_few_shot and args.k_few_shot > 0) or args.few_shot) and fewshot:
+    if (args.k_few_shot > 0) and fewshot:
         prompt = pt.shared_few_prompt
         for ex in fewshot:
             prompt = _format_example(ex, prompt, with_answer=True)
-        prompt += (
-            "\nNow make your best effort and select the correct answer "
-            "for the following question. You only need to output the option.\n\n"
-        )
+        prompt += pt.shared_zero_prompt
     if args.cot:
         prompt = pt.shared_cot_prompt
     prompt = prompt.format(num_choices=len(example["choices"]))
@@ -70,7 +67,7 @@ def _shared(example, args, fewshot=None):
 def _task(example, args, fewshot=None):
     pt_dict = json.loads(pt.task_zero_prompt, strict=False)
     prompt = pt_dict[example["source"]]
-    if ( (args.dynamic_few_shot and args.k_few_shot > 0) or args.few_shot) and fewshot:
+    if (args.k_few_shot > 0) and fewshot:
         pt_dict = json.loads(pt.task_few_prompt, strict=False)
         prompt = pt_dict[example["source"]]
         for ex in fewshot:
