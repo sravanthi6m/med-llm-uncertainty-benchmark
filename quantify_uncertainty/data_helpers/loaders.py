@@ -29,16 +29,14 @@ def get_logits_data(model_name: str,
                     prompt_methods: List[str],
                     icl_methods: List[str],
                     k_few_shot: int,
-                    dynamic_few_shot: bool,
                     cot: bool) -> Dict[str, Dict[str, list]]:
     logits_all = {}
     for m in prompt_methods:
         for fs in icl_methods:
             cot_tag = "cot" if cot else "nocot"
             few_shot_tag = f"k{k_few_shot}" if k_few_shot > 0 else "k0"
-            dynamic_tag = "dynamic" if dynamic_few_shot else "static"
             
-            fname = f"{model_name}_{data_name}_{m}_{few_shot_tag}_{dynamic_tag}_{cot_tag}.pkl"
+            fname = f"{model_name}_{data_name}_{m}_{few_shot_tag}_{cot_tag}.pkl"
             path = os.path.join(logits_data_dir, fname)
             with open(path, "rb") as fp:
                 logits = pickle.load(fp)

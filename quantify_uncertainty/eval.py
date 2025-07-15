@@ -28,7 +28,6 @@ def evaluate(cfg):
             prompt_methods=cfg.prompt_methods, 
             icl_methods=cfg.icl_methods,
             k_few_shot=cfg.k_few_shot,
-            dynamic_few_shot=cfg.dynamic_few_shot,
             cot=cfg.cot
         )
 
