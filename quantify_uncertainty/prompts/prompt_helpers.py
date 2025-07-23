@@ -8,6 +8,7 @@ few_shot_exp_ids: Dict[str, List[int]] = {
     "CosmosQA": [1, 3, 5, 7, 9],
     "Halu-OpenDialKG": [5, 7, 9],
     "Halu-CNN/DailyMail": [9],
+    "AMBOSS_d1_train": [0],
 }
 
 

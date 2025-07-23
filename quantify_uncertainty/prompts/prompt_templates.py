@@ -13,7 +13,7 @@ task_zero_prompt = """
 }
 """
 
-shared_few_prompt = """Below are some examples of multiple-choice questions with six potential answers. For each question, only one option is correct.\n\n"""
+shared_few_prompt = "Below are some examples of multiple-choice questions with {num_choices} potential answers. For each question, only one option is correct.\n\n"
 
 task_few_prompt = """
 {"MMLU": "Below are some examples of multiple-choice questions about question answering. Each question should be answered based on your world knowledge and problem solving ability.\n\n", 
@@ -26,7 +26,7 @@ task_few_prompt = """
 
 base_cot_prompt = """Please reason step-by-step and select the correct answer. You only need to output the option.\n\n"""
 
-shared_cot_prompt = """The following is a multiple-choice question with six potential answers. Only one of these options is correct. Please reason step-by-step and select the correct answer. You only need to output the option.\n\n"""
+shared_cot_prompt = "The following is a multiple-choice question with {num_choices} potential answers. Only one of these options is correct. Please reason step-by-step and select the correct answer. You only need to output the option.\n\n"
 
 task_cot_prompt = """
 {"MMLU": "The following is a multiple-choice question about question answering. You should answer the question based on your world knowledge and problem solving ability. Please reason step-by-step and select the correct answer. You only need to output the option.\n\n", 

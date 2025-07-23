@@ -41,7 +41,8 @@ def evaluate_outputs_with_conformal(
             "cal_ratio": cal_ratio,
             "alpha": alpha,
         },
-        "num_examples": len(cal_raw) + len(test_raw),
+        "num_cal_examples": len(cal_raw),
+        "num_test_examples": len(test_raw),
         "metrics": metrics,
     }
     save_metrics_append(out, out_json)

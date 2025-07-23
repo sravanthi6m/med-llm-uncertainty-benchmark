@@ -12,7 +12,13 @@ from quantify_uncertainty.models.open_source import OpenSourceHFModel
 from quantify_uncertainty.models.openai_model import (
     OpenAIModel,
 )
+from quantify_uncertainty.models.openai_reasoning import ReasoningModel
 from quantify_uncertainty.data_helpers.loaders import load_all_data
+from scripts.python.dynamic_sampler import (
+    DynamicSampler,
+    SentenceTransformerModel,
+    OpenAIEmbeddingModel,
+)
 
 
 def get_fewshot_examples(raw_data, src: str, n: int) -> List[dict]:
@@ -31,7 +37,36 @@ def run_experiment(
     failures_path: str = "experiment_failures_record.jsonl",
     api_key: str = None,
     dataset_type: str = None,
+    few_shot_pool_1: str = None,
+    embedding_model: str = None,
+    few_shot_pool_2: str = None,
 ):
+    dynamic_fewshot_map = None
+    if few_shot > 0:
+        print("Generating dynamic samples")
+
+        if not few_shot_pool_1 or not os.path.exists(few_shot_pool_1):
+            raise FileNotFoundError(
+                f"Dynamic few-shot requires a valid path to json file at --few_shot_pool_1. Path not found: {args.few_shot_pool_1}"
+            )
+
+        if "text-embedding" in embedding_model:
+            embedding_model_instance = OpenAIEmbeddingModel(model_name=embedding_model)
+        else:
+            embedding_model_instance = SentenceTransformerModel(
+                model_name=embedding_model
+            )
+
+        sampler = DynamicSampler(
+            data_file_path=dataset_path,
+            few_shot_pool_path_1=few_shot_pool_1,
+            few_shot_pool_path_2=few_shot_pool_2,
+            embedding_model=embedding_model_instance,
+        )
+        dynamic_fewshot_map = sampler.get_dynamic_few_shot_examples(
+            k=few_shot, pool_1_percentage=1.0
+        )
+
     # Load raw data
     raw_data = load_all_data(
         os.path.dirname(dataset_path),
@@ -39,8 +74,8 @@ def run_experiment(
     )
     src = raw_data[0]["source"]
 
-    # Few-shot examples
-    fewshot = get_fewshot_examples(raw_data, src, few_shot) if few_shot > 0 else None
+    # # Few-shot examples
+    # fewshot = get_fewshot_examples(raw_data, src, few_shot) if few_shot > 0 else None
 
     # Prompt formatter
     format_fn = PROMPT_DISPATCH[prompt_method]
@@ -50,14 +85,21 @@ def run_experiment(
         model = OpenSourceHFModel(model_name)
     elif backend == "openai":
         model = OpenAIModel(model_name, api_key=api_key)
+    elif backend == "reasoning":
+        model = ReasoningModel(model_name, api_key=api_key)
     else:
         raise ValueError(f"Unsupported backend: {backend}")
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, "a") as fout, open(failures_path, "a") as ferr:
         for ex in tqdm(raw_data, desc=f"{model_name} | {prompt_method}"):
+            current_fewshot_examples = (
+                dynamic_fewshot_map.get(ex["id"], []) if dynamic_fewshot_map else None
+            )
             formatted = format_fn(
-                ex, argparse.Namespace(few_shot=few_shot, cot=cot), fewshot
+                ex,
+                argparse.Namespace(few_shot=few_shot, cot=cot),
+                current_fewshot_examples,
             )
             prompt = formatted["prompt"]
             # print(f"prompt here is {prompt}")

@@ -14,11 +14,12 @@ from quantify_uncertainty.metrics_runner import evaluate_outputs_with_conformal
 
 def detect_backend(model_name: str) -> str:
     """Determine backend type from model name."""
-    return (
-        "openai"
-        if "gpt" in model_name.lower() or "openai" in model_name.lower()
-        else "open"
-    )
+    backend = "open"
+    if "gpt" in model_name.lower() or "openai" in model_name.lower():
+        backend = "openai"
+    elif "o4" in model_name.lower():
+        backend = "reasoning"
+    return backend
 
 
 def build_output_path(dataset_name, cot, model_name) -> str:
@@ -61,6 +62,8 @@ def main():
     parser.add_argument(
         "--dataset_type", type=str, default="NoAbst"
     )  # NoAbst, Abst, PertRandAbst
+    parser.add_argument("--embedding_model", type=str, default=None)
+    parser.add_argument("--fewshot_pool_path", type=str)
     args = parser.parse_args()
 
     model_path = args.model
@@ -74,6 +77,8 @@ def main():
     version = args.version
     model_key = args.model_key
     dataset_type = args.dataset_type
+    embedding_model = args.embedding_model
+    fewshot_pool_path = args.fewshot_pool_path
 
     load_dotenv(dotenv_path="env/.env")
     api_key = os.getenv(model_key)
@@ -111,6 +116,8 @@ def main():
         failures_path=failures_path,
         api_key=api_key,
         dataset_type=dataset_type,
+        embedding_model=embedding_model,
+        few_shot_pool_1=fewshot_pool_path,
     )
 
     # Run evaluation
