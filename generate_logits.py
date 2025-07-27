@@ -21,6 +21,8 @@ def parse_args():
                    default=["base"], choices=["base", "shared", "task"])
     p.add_argument("--cot", action="store_true",
                    help="add chain-of-thought template variant")
+    p.add_argument("--output_logits_pkl", required=True,
+                   help="Full path to save the output logits pickle file.")
 
     p.add_argument("--k_few_shot", type=int, default=0,
                    help="Number of few-shot examples (k). Set to > 0 to enable few-shot.")
@@ -49,10 +51,11 @@ def main():
         if not args.few_shot_pool_1 or not os.path.exists(args.few_shot_pool_1):
             raise FileNotFoundError(f"Dynamic few-shot requires a valid path to json file at --few_shot_pool_1. Path not found: {args.few_shot_pool_1}")
         
-        if "text-embedding" in args.embedding_model:
-            embedding_model_instance = OpenAIEmbeddingModel(model_name=args.embedding_model)
-        else:
-            embedding_model_instance = SentenceTransformerModel(model_name=args.embedding_model)
+        # if "text-embedding" in args.embedding_model:
+        #     embedding_model_instance = OpenAIEmbeddingModel(model_name=args.embedding_model)
+        # else:
+        #     embedding_model_instance = SentenceTransformerModel(model_name=args.embedding_model)
+        embedding_model_instance = OpenAIEmbeddingModel(model_name=args.embedding_model)
         
         sampler = DynamicSampler(
             data_file_path=args.dataset_file,
@@ -92,6 +95,7 @@ def main():
                     prompt_dict['prompt'] = final_prompt_str
                 except Exception as e:
                     print(f"Warning: Could not apply chat template. Error: {e}")
+            #print(prompt_dict) ####
             
             prompts_for_batching.append(prompt_dict)
 
@@ -120,16 +124,16 @@ def main():
             json.dump(data_with_answers, f, indent=4)
         print("saved answers to", args.output_json)
 
-        # TODO: update filename ... update data loader
-        # ${BASENAME}_${PROMPT_METHOD}_${FEW_SHOT_TAG}_${DYNAMIC_TAG}_${COT_TAG}
-        cot_tag = "cot" if args.cot else "nocot"
-        few_shot_tag = f"k{args.k_few_shot}" if args.k_few_shot > 0 else "k0"
-        model_basename = os.path.basename(args.model.strip('/'))
-        fn = f"{model_basename}_{os.path.basename(args.dataset_file)[:-5]}_{pm}_{few_shot_tag}_{cot_tag}.pkl"
+        # # TODO: update filename ... update data loader
+        # # ${BASENAME}_${PROMPT_METHOD}_${FEW_SHOT_TAG}_${DYNAMIC_TAG}_${COT_TAG}
+        # cot_tag = "cot" if args.cot else "nocot"
+        # few_shot_tag = f"k{args.k_few_shot}" if args.k_few_shot > 0 else "k0"
+        # model_basename = os.path.basename(args.model.strip('/'))
+        # fn = f"{model_basename}_{os.path.basename(args.dataset_file)[:-5]}_{pm}_{few_shot_tag}_{cot_tag}.pkl"
 
-        with open(os.path.join(args.out_dir, fn), "wb") as fp:
+        with open(args.output_logits_pkl, "wb") as fp:
             pickle.dump(logits_rows, fp)
-        print("saved", fn)
+        print(f"Saved logits to: {args.output_logits_pkl}")
 
 
 if __name__ == "__main__":

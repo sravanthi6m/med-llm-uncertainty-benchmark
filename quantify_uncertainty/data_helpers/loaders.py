@@ -6,39 +6,26 @@ from sklearn.model_selection import train_test_split
 
 ids_to_remove: List[int] = []
 
-def get_raw_data(raw_data_dir: str, data_name: str, cal_ratio: float
-                 ) -> Tuple[List[dict], List[dict]]:
-    path = os.path.join(raw_data_dir, f"{data_name}.json")
-    raw_data = json.load(open(path, "r"))
+def get_raw_data(raw_data_file: str,
+                 cal_ratio: float
+                ) -> Tuple[List[dict], List[dict]]:
+    with open(raw_data_file, "r") as f:
+        raw_data = json.load(f)
     raw_data = [d for idx, d in enumerate(raw_data) if idx not in ids_to_remove]
     
     return train_test_split(raw_data, train_size=cal_ratio, random_state=42)
 
 
-def load_all_data(raw_data_dir: str, data_name: str):
-    path = os.path.join(raw_data_dir, f"{data_name}.json")
-    return json.load(open(path, "r"))
-
-
-def get_logits_data(model_name: str,
-                    data_name: str,
-                    cal_raw_data,
-                    test_raw_data,
-                    logits_data_dir: str,
+def get_logits_data(logits_pkl_path: str,
                     cal_ratio: float,
                     prompt_methods: List[str],
-                    icl_methods: List[str],
-                    k_few_shot: int,
-                    cot: bool) -> Dict[str, Dict[str, list]]:
+                    icl_methods: List[str]
+                    ) -> Dict[str, Dict[str, list]]:
     logits_all = {}
     for m in prompt_methods:
-        for fs in icl_methods:
-            cot_tag = "cot" if cot else "nocot"
-            few_shot_tag = f"k{k_few_shot}" if k_few_shot > 0 else "k0"
-            
-            fname = f"{model_name}_{data_name}_{m}_{few_shot_tag}_{cot_tag}.pkl"
-            path = os.path.join(logits_data_dir, fname)
-            with open(path, "rb") as fp:
+        for fs in icl_methods:          
+            print(f"Loading logits from: {logits_pkl_path}")
+            with open(logits_pkl_path, "rb") as fp:
                 logits = pickle.load(fp)
             logits = [item for i, item in enumerate(logits) if i not in ids_to_remove]
             cal_logits, test_logits = train_test_split(
@@ -50,4 +37,3 @@ def get_logits_data(model_name: str,
 
 def convert_id_to_ans(raw_data):
     return {str(row["id"]): row["answer"] for row in raw_data}
-
