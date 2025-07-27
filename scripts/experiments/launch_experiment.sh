@@ -45,6 +45,7 @@ DATASETS=("medqa")
 OG_K_VALUES=()
 PERTURBED_K_VALUES=(0)
 ABST_TYPES=("noabst" "randabst")
+COT_MODES=("" "--cot") #("" "--cot")
 
 ###############################
 EMBEDDING_MODEL="text-embedding-ada-002"
@@ -71,35 +72,49 @@ for model in "${MODELS[@]}"; do
 
         for k in "${OG_K_VALUES[@]}"; do
             for abst_type in "${ABST_TYPES[@]}"; do
-                JOB_NAME="${model}_${dataset}_k${k}_og_${abst_type}"
-                if [ "$dataset" == "medqa" ]; then
-                    FEW_SHOT_POOL="${DATA_DIR}/few_shot_pool_medqa_1_train_${abst_type}.json"
-                else
-                    FEW_SHOT_POOL="${DATA_DIR}/few_shot_pool_amboss_train_test_alldiff_${abst_type}.json"
-                fi
-                
-                sbatch --nodes=1 --partition=${PARTITION} --constraint=${CONSTRAINT} --gpus=${GPUS} --cpus-per-task=${CPUS} --mem=${MEM} --time=${TIME} \
-                       --job-name="${JOB_NAME}" \
-                       --output="${LOG_DIR}/${JOB_NAME}-%j-${DATE_TAG}.out" \
-                       --error="${LOG_DIR}/${JOB_NAME}-%j-${DATE_TAG}.err" \
-                       ./submit_job.sh --model "$model" --dataset "$dataset" --k "$k" --abst_type "$abst_type" --few_shot_pool "$FEW_SHOT_POOL" --embedding_model "$EMBEDDING_MODEL" --tracker_file "$TRACKER_FILENAME"
+                for cot_flag in "${COT_MODES[@]}"; do 
+                    cot_tag="nocot"
+                    if [ -n "$cot_flag" ]; then
+                        cot_tag="cot"
+                    fi
+
+		    JOB_NAME="${model}_${dataset}_k${k}_og_${abst_type}_${cot_tag}"
+		    if [ "$dataset" == "medqa" ]; then
+		        FEW_SHOT_POOL="${DATA_DIR}/few_shot_pool_medqa_1_train_${abst_type}.json"
+		    else
+		        FEW_SHOT_POOL="${DATA_DIR}/few_shot_pool_amboss_train_test_alldiff_${abst_type}.json"
+		    fi
+		        
+		    sbatch --nodes=1 --partition=${PARTITION} --constraint=${CONSTRAINT} --gpus=${GPUS} --cpus-per-task=${CPUS} --mem=${MEM} --time=${TIME} \
+		           --job-name="${JOB_NAME}" \
+		           --output="${LOG_DIR}/${JOB_NAME}-%j-${DATE_TAG}.out" \
+		           --error="${LOG_DIR}/${JOB_NAME}-%j-${DATE_TAG}.err" \
+		           ./submit_job.sh --model "$model" --dataset "$dataset" --k "$k" --abst_type "$abst_type" --few_shot_pool "$FEW_SHOT_POOL" ${cot_flag} --embedding_model "$EMBEDDING_MODEL" --tracker_file "$TRACKER_FILENAME"
+                done
             done
         done
 
         for k in "${PERTURBED_K_VALUES[@]}"; do
             for abst_type in "${ABST_TYPES[@]}"; do
-                JOB_NAME="${model}_${dataset}_k${k}_perturbed_${abst_type}"
-                if [ "$dataset" == "medqa" ]; then
-                    FEW_SHOT_POOL="${DATA_DIR}/perturbed_blended_few_shot_pool_medqa_1_train_${abst_type}.json"
-                else
-                    FEW_SHOT_POOL="${DATA_DIR}/perturbed_blended_few_shot_pool_amboss_train_test_alldiff_${abst_type}.json"
-                fi
+                for cot_flag in "${COT_MODES[@]}"; do
+                    cot_tag="nocot"
+                    if [ -n "$cot_flag" ]; then
+                        cot_tag="cot"
+                    fi
 
-                sbatch --nodes=1 --partition=${PARTITION} --constraint=${CONSTRAINT} --gpus=${GPUS}  --cpus-per-task=${CPUS} --mem=${MEM} --time=${TIME} \
-                       --job-name="${JOB_NAME}" \
-                       --output="${LOG_DIR}/${JOB_NAME}-%j-${DATE_TAG}.out" \
-                       --error="${LOG_DIR}/${JOB_NAME}-%j-${DATE_TAG}.err" \
-                       ./submit_job.sh --model "$model" --dataset "$dataset" --k "$k" --perturbed --abst_type "$abst_type" --few_shot_pool "$FEW_SHOT_POOL" --embedding_model "$EMBEDDING_MODEL" --tracker_file "$TRACKER_FILENAME"
+		    JOB_NAME="${model}_${dataset}_k${k}_perturbed_${abst_type}_${cot_tag}"
+		    if [ "$dataset" == "medqa" ]; then
+		        FEW_SHOT_POOL="${DATA_DIR}/perturbed_blended_few_shot_pool_medqa_1_train_${abst_type}.json"
+		    else
+		        FEW_SHOT_POOL="${DATA_DIR}/perturbed_blended_few_shot_pool_amboss_train_test_alldiff_${abst_type}.json"
+		    fi
+
+		    sbatch --nodes=1 --partition=${PARTITION} --constraint=${CONSTRAINT} --gpus=${GPUS}  --cpus-per-task=${CPUS} --mem=${MEM} --time=${TIME} \
+		           --job-name="${JOB_NAME}" \
+		           --output="${LOG_DIR}/${JOB_NAME}-%j-${DATE_TAG}.out" \
+		           --error="${LOG_DIR}/${JOB_NAME}-%j-${DATE_TAG}.err" \
+		           ./submit_job.sh --model "$model" --dataset "$dataset" --k "$k" --perturbed --abst_type "$abst_type" --few_shot_pool "$FEW_SHOT_POOL" ${cot_flag} --embedding_model "$EMBEDDING_MODEL" --tracker_file "$TRACKER_FILENAME"
+                done
             done
         done
     done
