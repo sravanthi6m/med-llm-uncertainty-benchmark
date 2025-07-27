@@ -51,14 +51,20 @@ def _base(example, args, fewshot=None):
 
 
 def _shared(example, args, fewshot=None):
-    prompt = pt.shared_zero_prompt
+    if args.cot:
+        prompt = pt.shared_cot_prompt
+    else:
+        prompt = pt.shared_zero_prompt
+    
     if (args.k_few_shot > 0) and fewshot:
         prompt = pt.shared_few_prompt
         for ex in fewshot:
             prompt = _format_example(ex, prompt, with_answer=True)
-        prompt += pt.shared_zero_prompt
-    if args.cot:
-        prompt = pt.shared_cot_prompt
+        if args.cot:
+            prompt += pt.shared_cot_prompt
+        else:
+            prompt += pt.shared_zero_prompt
+    
     prompt = prompt.format(num_choices=len(example["choices"]))
     prompt = _format_example(example, prompt)
     return {"id": example["id"], "choices": example["choices"], "prompt": prompt}
