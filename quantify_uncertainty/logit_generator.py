@@ -21,12 +21,27 @@ def load_model(model_name: str):
 
     tokenizer.truncation_side = "left"
     tokenizer.model_max_length = min(tokenizer.model_max_length, 2048)
+    
+    if any(k in model_name.lower() for k in ("gemma", "medgemma")):
+        model_kwargs = {
+            "attn_implementation": "eager"
+        }
+    else:
+        model_kwargs = {
+            "attn_implementation": "sdpa"
+        }
 
-    model_kwargs = {
-        "attn_implementation": "sdpa"
-    }
-
-    if '70b' in model_name.lower() or '72b' in model_name.lower():
+    if any(sz in model_name.lower() for sz in ("27b", "32b")):
+        print(f"Applying 4-bit quantization for large model {model_name}")
+        quant_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_use_double_quant=False
+        )
+        model_kwargs["quantization_config"] = quant_config
+        model_kwargs["device_map"] = "auto"
+    elif '70b' in model_name.lower() or '72b' in model_name.lower():
         print(f"Large model ({model_name}) detected. Applying 4-bit quantization.")
 
         quantization_config = BitsAndBytesConfig(
@@ -43,8 +58,7 @@ def load_model(model_name: str):
             3: "38GiB",
             4: "38GiB",
             "cpu": "0GiB" 
-        }
-    
+        }    
     else:
         model_kwargs["device_map"] = "auto"
 
@@ -57,6 +71,13 @@ def load_model(model_name: str):
         if "deepseek" in model_name:
             model.generation_config = GenerationConfig.from_pretrained(model_name)
             model.generation_config.pad_token_id = model.generation_config.eos_token_id
+    elif "llama-3" in model_name.lower() or "llama3" in model_name.lower():
+        model = LlamaForCausalLM.from_pretrained(
+            model_name,
+            torch_dtype="auto",
+            trust_remote_code=True,
+            **model_kwargs
+        )
     elif "Llama" in model_name:
         model = LlamaForCausalLM.from_pretrained(
             model_name,
@@ -78,9 +99,11 @@ def load_model(model_name: str):
     elif any(k in model_name.lower() for k in ("gemma", "medgemma")):
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
-            torch_dtype=torch.bfloat16,
+            torch_dtype="auto",
+            trust_remote_code=True,
             **model_kwargs
         )
+        model.config.use_cache = False
     elif "phi" in model_name.lower():
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
